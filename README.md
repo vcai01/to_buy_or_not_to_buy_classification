@@ -1,4 +1,4 @@
-![Image of Online Shopping](https://github.com/vcai01/to_buy_or_not_to_buy_classification/blob/master/online-shopping-e-commerce-banner.jpg)
+![Image of Online Shopping](https://github.com/vcai01/to_buy_or_not_to_buy_classification/blob/master/online-banner.jpg)
 <div align="right"><font color=grey size=2>Image © dreamstime.com</font></div>
 
 # To Buy or not to Buy
