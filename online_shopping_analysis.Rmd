@@ -1,0 +1,162 @@
+---
+title: "To Buy or not to Buy? -- An Application of Classification Models on Online Shopping Intention Data"
+author: "Wen Cai"
+date: "18/12/2019"
+output: html_document
+---
+
+# Overview
+
+The purpose of this analysis project is to combine my understanding of online shopping in the retail industry with my knowledge in data analytics, to demonstrate the analytical techniques I have learned from the MicroMasters Program in Analytics offered by Georgia Institute of Technology. 
+
+The Online Shoppers Purchasing Intention Dataset from the UCI Machine Learning Repository, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include support vector machine, k-nearest-neighbourhood and logistical regression, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
+
+1. Generate data visualizations to understand the data structure;
+2. Complete data preprocessing  for the modeling;
+3. Develop research questions about the data;
+4. Apply learning algorithm to compare various models' performances and answer the questions.
+
+# Summary
+
+# Exploratory Analysis
+
+There are ten numerical and eight categorical variables. The last variable $Revenue$ can be used as the class label and needs to be converted to $1$s or $0$s for the classification models in the analysis. There is no missing value in this dataset.
+
+```{r}
+rm(list = ls())
+library(dplyr)
+library(ggplot2)
+library(ggcorrplot)
+
+data <- read.csv("online_shoppers_intention.csv", stringsAsFactors = FALSE, header = TRUE)
+
+str(data)
+```
+
+```{r}
+sum(is.na(data))
+data[data == "?"] # sometimes the question mark is used to indicate missing values 
+
+```
+
+```{r}
+ggplot(data, aes(Weekend, fill =  Revenue)) + 
+    geom_bar() +
+    scale_fill_brewer(palette = 'Paired')
+```
+
+```{r}
+ggplot(data, aes(VisitorType, fill =  Revenue)) + 
+    geom_bar() +
+    scale_fill_brewer(palette = 'Paired')
+```
+
+```{r}
+unique(data$Month)
+data$Month[data$Month == 'June'] <- 'Jun'
+data$Month = factor(data$Month, levels = month.abb)
+
+ggplot(data, aes(Month, fill =  Revenue)) + 
+    geom_bar() +
+    scale_fill_brewer(palette = 'Paired')
+```
+
+$Administrative$, $Administrative Duration$, $Informational$, $Informational Duration$, $Product Related$ and $Product Related Durationv represent the number of different types of pages visited by the visitor in that session and total time spent in each of these page categories. 
+
+The $Bounce Rate$, $Exit Rate$ and $Page Value$ features represent the metrics measured by "Google Analytics" for each page in the e-commerce site. From the correlogram, we examine the correlation of the three variables and find the high correlation of $Bounce Rate$ and $Exit Rate$.
+
+```{r}
+data_GA <- data %>% select('BounceRates', 'ExitRates', 'PageValues')
+
+# Correlation matrix
+corr <- round(cor(data_GA), 1)
+
+ggcorrplot(corr, hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           method="circle", 
+           colors = c("tomato", "white", "lightblue"), 
+           title = "Correlogram of online-shopping", 
+           ggtheme=theme_bw)
+
+```
+
+# Data Preprocessing
+
+```{r}
+# convert the values of Revenue, Month, Weekend and Visitor Type to numbers for models training later
+data <- data %>% mutate(Revenue = if_else(Revenue == 'FALSE', 0, 1)) %>% 
+    mutate(Weekend = if_else(Weekend == 'FALSE', 0, 1))
+
+data$Month <- match(data$Month, month.abb) 
+
+data$VisitorType[data$VisitorType == 'Other'] <- 0
+data$VisitorType[data$VisitorType == 'New_Visitor'] <- 1
+data$VisitorType[data$VisitorType == 'Returning_Visitor'] <- 2
+data$VisitorType <- as.numeric(data$VisitorType) # convert character to number
+
+summary(data)
+```
+
+Ramdomly split the data into training, validation and test sets:
+
+```{r}
+# 70% for training
+set.seed(123)
+smp_size <- floor(0.7 * nrow(data))
+
+train_indx <- sample(seq_len(nrow(data)), size = smp_size)
+training_set <- data[train_indx,]
+
+# 15% for validation
+left <- data[-train_indx,]
+validation_indx <- sample(seq_len(nrow(left)), size = 0.5*nrow(left))
+validation_set <- left[validation_indx,]
+
+# 15% for test
+test_set <- left[-validation_indx,]
+
+nrow(training_set) 
+nrow(validation_set)
+nrow(test_set)
+```
+
+# Research Questions
+
+# Analytics Models
+
+```{r}
+library(kernlab)
+
+svm <- ksvm(as.matrix(training_set[,1:17]),as.factor(training_set[,18]),
+                   type = "C-svc", # Use C-classification method
+                   kernel = "vanilladot", # Use simple linear kernel
+                   C = 100,
+                   scaled = TRUE)
+
+
+```
+
+As there is no training or validation step for k-nearest neighbor model, I use all the data to test the performane: 
+```{r}
+library(kknn)
+
+check_accuracy = function(X){
+  predicted <- rep(0, (nrow(data))) # predictions: start with a vector of all zeros
+  for (i in 1:nrow(data)){
+    # remove row i of the data when finding nearest neighbors
+    knn <- kknn(Revenue~., data[-i,], data[i,], k = X, scale = TRUE) 
+    predicted[i] <- as.integer(fitted(knn) + 0.5) # round off to 0 or 1
+  }
+  accuracy = sum(predicted == data[, 18]) / nrow(data)
+  return(accuracy)
+}
+
+acc <- rep(0, 20) # set up a vector of 20 zeros to start
+for (X in 1:20){
+  acc[X] = check_accuracy(X) 
+}
+
+acc
+```
