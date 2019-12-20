@@ -1,29 +1,27 @@
 ---
 title: "To Buy or not to Buy? -- An Application of Classification Models on Online Shopping Intention Data"
 author: "Wen Cai"
-date: "18/12/2019"
-output: html_document
+output: pdf_document
 ---
 
 # Overview
 
 The purpose of this analysis project is to combine my understanding of online shopping in the retail industry with my knowledge in data analytics, to demonstrate the analytical techniques I have learned from the MicroMasters Program in Analytics offered by Georgia Institute of Technology. 
 
-The Online Shoppers Purchasing Intention Dataset from the UCI Machine Learning Repository, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include support vector machine, k-nearest-neighbourhood and logistical regression, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
+The Online Shoppers Purchasing Intention Dataset from the UCI Machine Learning Repository, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include logistical regression, support vector machines, k-nearest-neighbour, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
 
-1. Generate data visualizations to understand the data structure;
-2. Complete data preprocessing  for the modeling;
-3. Develop research questions about the data;
-4. Apply learning algorithm to compare various models' performances and answer the questions.
+- Conduct exploratory analysis;
+- Develop research questions about the data;
+- Complete data preprocessing for the modeling;
+- Apply learning algorithm to compare various models' performances and answer the questions.
 
-# Summary
-
-# Exploratory Analysis
+#1. Exploratory Analysis
 
 There are ten numerical and eight categorical variables. The last variable $Revenue$ can be used as the class label and needs to be converted to $1$s or $0$s for the classification models in the analysis. There is no missing value in this dataset.
 
 ```{r}
 rm(list = ls())
+
 library(dplyr)
 library(ggplot2)
 library(ggcorrplot)
@@ -39,11 +37,19 @@ data[data == "?"] # sometimes the question mark is used to indicate missing valu
 
 ```
 
+85.4% (10,422) of the customers did not complete the transaction while those who completed transactions, only take up 15.5% (1908) of the dataset. Around 26.15% of the online shopping happened at weekends.
+
 ```{r}
-ggplot(data, aes(Weekend, fill =  Revenue)) + 
-    geom_bar() +
-    scale_fill_brewer(palette = 'Paired')
+data %>% filter(Revenue == 'FALSE') %>% nrow()/nrow(data)
+
+data %>% filter(Revenue == 'TRUE' & Weekend == 'TRUE') %>% nrow()/1908
+
+ggplot(data, aes(Revenue, fill = Weekend)) + 
+  geom_bar() +
+  scale_fill_brewer(palette = 'Paired') 
 ```
+
+Returning visitors were much more than new visitors. 
 
 ```{r}
 ggplot(data, aes(VisitorType, fill =  Revenue)) + 
@@ -51,8 +57,15 @@ ggplot(data, aes(VisitorType, fill =  Revenue)) +
     scale_fill_brewer(palette = 'Paired')
 ```
 
+Only ten months of data are included in the data set, no January and April data. March, May, November and December were the four months with significant online shopping performance (both browsing and purchasing). The holiday seasons account for shopping intention which makes sense, but why March and May, particularly, the performance in May even better than November. It was not explained. In a business context, we need to investigate that:
+
+- where the data was from?
+- how it was compiled?
+- whether there were unique situations?
+
 ```{r}
 unique(data$Month)
+
 data$Month[data$Month == 'June'] <- 'Jun'
 data$Month = factor(data$Month, levels = month.abb)
 
@@ -61,9 +74,9 @@ ggplot(data, aes(Month, fill =  Revenue)) +
     scale_fill_brewer(palette = 'Paired')
 ```
 
-$Administrative$, $Administrative Duration$, $Informational$, $Informational Duration$, $Product Related$ and $Product Related Durationv represent the number of different types of pages visited by the visitor in that session and total time spent in each of these page categories. 
+$Administrative$, $Administrative Duration$, $Informational$, $Informational Duration$, $Product Related$ and $Product Related Duration$ represent the number of different types of pages visited by the visitor in that session and total time spent in each of these page categories. 
 
-The $Bounce Rate$, $Exit Rate$ and $Page Value$ features represent the metrics measured by "Google Analytics" for each page in the e-commerce site. From the correlogram, we examine the correlation of the three variables and find the high correlation of $Bounce Rate$ and $Exit Rate$.
+$Bounce Rate$, $Exit Rate$ and $Page Value$ represent the metrics measured by "Google Analytics" for each page in the e-commerce site. From the correlogram, we examine the correlation of the three variables and find the high correlation of $Bounce Rate$ and $Exit Rate$.
 
 ```{r}
 data_GA <- data %>% select('BounceRates', 'ExitRates', 'PageValues')
@@ -76,32 +89,26 @@ ggcorrplot(corr, hc.order = TRUE,
            lab = TRUE, 
            lab_size = 3, 
            method="circle", 
-           colors = c("tomato", "white", "lightblue"), 
+           colors = c("tomato", "lightgrey", "lightblue"), 
            title = "Correlogram of online-shopping", 
            ggtheme=theme_bw)
-
 ```
 
-# Data Preprocessing
+#2. Research Questions
+
+1) Which features have close relationship with a shopper's online purchase intention?
+2) How accurate is the prediction of the online purchase intention? 
+3) What is a threshold probability to separate between "buy" and "not buy" response?
+
+#3. Data Preprocessing & Logistic Regression
+
+Logistic regression models are able to treat categorical variables as dummy variables while other models such as suport vector machines and k-means clustering could exclusively handle numeric variables. Therefore, I need to modify variables by steps and combine data preprocessing with the model training.
+
+First, the response $Revenue$ has to be mutated as the $glm()$ function only deals with 0/1 as responses. Ramdomly split the data into training, validation and test sets:
 
 ```{r}
-# convert the values of Revenue, Month, Weekend and Visitor Type to numbers for models training later
-data <- data %>% mutate(Revenue = if_else(Revenue == 'FALSE', 0, 1)) %>% 
-    mutate(Weekend = if_else(Weekend == 'FALSE', 0, 1))
+data <- data %>% mutate(Revenue = if_else(Revenue == 'FALSE', 0, 1))
 
-data$Month <- match(data$Month, month.abb) 
-
-data$VisitorType[data$VisitorType == 'Other'] <- 0
-data$VisitorType[data$VisitorType == 'New_Visitor'] <- 1
-data$VisitorType[data$VisitorType == 'Returning_Visitor'] <- 2
-data$VisitorType <- as.numeric(data$VisitorType) # convert character to number
-
-summary(data)
-```
-
-Ramdomly split the data into training, validation and test sets:
-
-```{r}
 # 70% for training
 set.seed(123)
 smp_size <- floor(0.7 * nrow(data))
@@ -122,23 +129,93 @@ nrow(validation_set)
 nrow(test_set)
 ```
 
-# Research Questions
+Use all features to build the first logistic model and then select six significant ones based on P-value to build a simpler model and compare their performance.
 
-# Analytics Models
+The simpler logistic model has lower AIC on training set and higher accuracy rate on validation set.
+
+```{r}
+logit1 <- glm(Revenue ~., family = binomial, training_set)
+summary(logit1)
+
+validation_probs<- predict(logit1, validation_set[, -18], type = "response")
+validation_pred = rep(0, nrow(validation_set)) 
+validation_pred[validation_probs > 0.5] = 1
+
+mean(validation_pred == validation_set$Revenue)
+
+logit2 <- glm(Revenue ~ BounceRates + ExitRates + PageValues + 
+              Month + VisitorType + Weekend, 
+              family = binomial, training_set)
+summary(logit2)
+
+validation_probs<- predict(logit2, validation_set[, -18], type = "response")
+validation_pred = rep(0, nrow(validation_set)) 
+validation_pred[validation_probs > 0.5] = 1
+
+mean(validation_pred == validation_set$Revenue)
+```
+
+#4. Data Preprocessing & Other Models
+
+Next, the further data preparation is necessary as $ksvm()$ and $kmeans()$* only work for numerical data.
+
+```{r}
+data <- data %>% mutate(Weekend = if_else(Weekend == 'FALSE', 0, 1))
+
+data$Month <- match(data$Month, month.abb) 
+
+data$VisitorType[data$VisitorType == 'Other'] <- 0
+data$VisitorType[data$VisitorType == 'New_Visitor'] <- 1
+data$VisitorType[data$VisitorType == 'Returning_Visitor'] <- 2
+data$VisitorType <- as.numeric(data$VisitorType) # convert character to number
+
+summary(data)
+```
+
+It seems redundant to split data again. However, the above categorical data has been mutated, so it is a necessary step. The set seed ensures that the training, validation and test sets are corresponding to the split data for logistic regression models. Thus we are able to compare the models' accuracy and do the selection using the validation set.
+
+```{r}
+# 70% for training
+set.seed(123)
+smp_size <- floor(0.7 * nrow(data))
+
+train_indx <- sample(seq_len(nrow(data)), size = smp_size)
+training_set <- data[train_indx,]
+
+# 15% for validation
+left <- data[-train_indx,]
+validation_indx <- sample(seq_len(nrow(left)), size = 0.5*nrow(left))
+validation_set <- left[validation_indx,]
+
+# 15% for test
+test_set <- left[-validation_indx,]
+```
+
+#4.1 Support Vector Machines (SVM)
+
+SVM has 84.69% of accuracy on the validation set.
 
 ```{r}
 library(kernlab)
 
-svm <- ksvm(as.matrix(training_set[,1:17]),as.factor(training_set[,18]),
-                   type = "C-svc", # Use C-classification method
-                   kernel = "vanilladot", # Use simple linear kernel
-                   C = 100,
-                   scaled = TRUE)
+svm <- ksvm(as.matrix(training_set[, 1:17]),as.factor(training_set[, 18]),
+            type = "C-svc", # Use C-classification method
+            kernel = "vanilladot", # Use simple linear kernel
+            C = 100,
+            scaled = TRUE)
 
 
+validation <- predict(svm, validation_set[, 1:17])
+validation_acc = sum(validation == validation_set[, 18]) / nrow(validation_set)
+validation_acc
 ```
 
-As there is no training or validation step for k-nearest neighbor model, I use all the data to test the performane: 
+#4.2 K-nearest Neighbor Model (KNN)
+
+As KNN is not model based and there is no training or validation step, I would like to use all the data in KNN to test its performane. However, the model ran really slow when there were a lot of observations in this case. I was not able to generate the output here due to time constraints, so just attaching the coding here. 
+
+In reality, both the algorithm efficiency and its accuracy matter. 
+
 ```{r}
 library(kknn)
 
@@ -153,10 +230,53 @@ check_accuracy = function(X){
   return(accuracy)
 }
 
-acc <- rep(0, 20) # set up a vector of 20 zeros to start
-for (X in 1:20){
+acc <- rep(0, 30) # set up a vector of 20 zeros to start
+for (X in 1:30){
   acc[X] = check_accuracy(X) 
 }
 
-acc
 ```
+
+#4.3 Clustering*
+
+As an unsupervised learning method, clustering is not for classification and we are not able to predict a shopper's purchase intention via clustering. 
+
+Instead, given the data including web browsing metrics, k-means clustering could be used to subset online shoppers into similar groups. If more customer profile data was given, we would be able to find out the common shopping behavior or characteristics of customers in a cluster, which may help promotion decision-making. 
+
+```{r}
+K <- 1:20
+tot_withinss <- numeric()
+
+for (k in K) {
+  km <- kmeans(data, centers = k, nstart = 20)
+  tot_w <- km$tot.withinss # generate total within-cluster sum of squares for the elbow plot later
+  tot_withinss <- c(tot_withinss, tot_w)
+}
+
+data.frame(K, tot_withinss)
+```
+
+```{r}
+plot(data.frame(K, tot_withinss), type = "b", pch = 16,
+     col = ifelse((tot_withinss < 6028025935 & tot_withinss > 6000000000), "red", "black"),
+     main = "The Elbow Method Showing the Optimal K")
+```
+
+According to the prediction accuracy on the validation set and the algorithm efficiency, the logistic regression model with six features stands out (88.43% accuracy on the validation set), in which $ExitRates$, $PageValues$ and $Month$ are significant to the shopping intention. In other words, the percentage that were the last in the session for all pageviews to the page, the average value for a web page that a user visited before completing an e-commerce transaction, and the shopping timing highly correlated with the purchase.
+
+To answer the second question, we may use the test set to estimate the model's quality: the model has the accuracy of 87.68% for the prediction of an online purchase intention.
+
+```{r}
+test_probs<- predict(logit2, test_set[, -18], type = "response")
+test_pred = rep(0, nrow(test_set)) 
+test_pred[test_probs > 0.5] = 1
+
+mean(test_pred == test_set$Revenue)
+```
+
+Finally, regarding a threshold probability to separate between "buy" and "not buy" response, 0.5 as probability was simply used in the above logistic model: if any precition higher than 0.5, the response would be rounded up to one.
+
+In a business context, it would be more complicated. Do we prefer to detect a less strong purchase intention and thus take actions such as emailing offers to motivate customers to buy? Or would we like to better target leads to increased sales due to cost constraints?
+
+In the former scenario, a lower threshold probability may be adopted while a higher one would be considered in the latter.
+
