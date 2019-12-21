@@ -8,7 +8,7 @@ output: pdf_document
 
 The purpose of this analysis project is to combine my understanding of online shopping in the retail industry with my knowledge in data analytics, to demonstrate the analytical techniques I have learned from the MicroMasters Program in Analytics offered by Georgia Institute of Technology. 
 
-The Online Shoppers Purchasing Intention Dataset from the UCI Machine Learning Repository, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include logistical regression, support vector machines, k-nearest-neighbour, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
+The Online Shoppers Purchasing Intention Dataset from the UCI Machine Learning Repository, has 12,330 data points and consists of both numerical and categorical attributes. The models I have used here include logistical regression, support vector machines, k-nearest-neighbour, which help to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
 
 - Conduct exploratory analysis;
 - Develop research questions about the data;
@@ -57,7 +57,7 @@ ggplot(data, aes(VisitorType, fill =  Revenue)) +
     scale_fill_brewer(palette = 'Paired')
 ```
 
-Only ten months of data are included in the data set, no January and April data. March, May, November and December were the four months with significant online shopping performance (both browsing and purchasing). The holiday seasons account for shopping intention which makes sense, but why March and May, particularly, the performance in May even better than November. It was not explained. In a business context, we need to investigate that:
+Only ten months of data were included in the data set, no January and April data. March, May, November and December were the four months with significant online shopping performance (both browsing and purchasing). Usually the holiday seasons account for shopping intention, but why March and May, particularly, the performance in May even better than November? It was not explained. In a business context, we need to investigate that:
 
 - where the data was from?
 - how it was compiled?
@@ -102,7 +102,7 @@ ggcorrplot(corr, hc.order = TRUE,
 
 #3. Data Preprocessing & Logistic Regression
 
-Logistic regression models are able to treat categorical variables as dummy variables while other models such as suport vector machines and k-means clustering could exclusively handle numeric variables. Therefore, I need to modify variables by steps and combine data preprocessing with the model training.
+Logistic regression models are able to treat categorical variables as dummy variables while other models such as suport vector machines and k-means clustering* could exclusively handle numeric variables. Therefore, I need to modify variables by steps and combine data preprocessing with the model training.
 
 First, the response $Revenue$ has to be mutated as the $glm()$ function only deals with 0/1 as responses. Ramdomly split the data into training, validation and test sets:
 
@@ -129,7 +129,7 @@ nrow(validation_set)
 nrow(test_set)
 ```
 
-Use all features to build the first logistic model and then select six significant ones based on P-value to build a simpler model and compare their performance.
+Use all features to build the first logistic model and then select six significant ones based on P-value to build a simpler model (in case of overfitting) and compare their performance.
 
 The simpler logistic model has lower AIC on training set and higher accuracy rate on validation set.
 
@@ -160,95 +160,95 @@ mean(validation_pred == validation_set$Revenue)
 Next, the further data preparation is necessary as $ksvm()$ and $kmeans()$* only work for numerical data.
 
 ```{r}
-data <- data %>% mutate(Weekend = if_else(Weekend == 'FALSE', 0, 1))
+data_k <- data %>% mutate(Weekend = if_else(Weekend == 'FALSE', 0, 1))
 
-data$Month <- match(data$Month, month.abb) 
+data_k$Month <- match(data_k$Month, month.abb) 
 
-data$VisitorType[data$VisitorType == 'Other'] <- 0
-data$VisitorType[data$VisitorType == 'New_Visitor'] <- 1
-data$VisitorType[data$VisitorType == 'Returning_Visitor'] <- 2
-data$VisitorType <- as.numeric(data$VisitorType) # convert character to number
+data_k$VisitorType[data_k$VisitorType == 'Other'] <- 0
+data_k$VisitorType[data_k$VisitorType == 'New_Visitor'] <- 1
+data_k$VisitorType[data_k$VisitorType == 'Returning_Visitor'] <- 2
+data_k$VisitorType <- as.numeric(data_k$VisitorType) # convert character to number
 
-summary(data)
+summary(data_k)
 ```
 
-It seems redundant to split data again. However, the above categorical data has been mutated, so it is a necessary step. The set seed ensures that the training, validation and test sets are corresponding to the split data for logistic regression models. Thus we are able to compare the models' accuracy and do the selection using the validation set.
+It seems redundant to split data again. However, the above categorical data has been mutated, so it is a necessary step. Meanwhile, the data set for the above logistic model should be kept as we may need it for testing later. The set seed ensures that the training, validation and test sets are corresponding to the split data for logistic regression models. Thus we are able to compare the models' accuracy and do the selection using the validation set.
 
 ```{r}
 # 70% for training
 set.seed(123)
-smp_size <- floor(0.7 * nrow(data))
+smp_size <- floor(0.7 * nrow(data_k))
 
-train_indx <- sample(seq_len(nrow(data)), size = smp_size)
-training_set <- data[train_indx,]
+train_indx_k <- sample(seq_len(nrow(data_k)), size = smp_size)
+training_set_k <- data_k[train_indx_k,]
 
 # 15% for validation
-left <- data[-train_indx,]
-validation_indx <- sample(seq_len(nrow(left)), size = 0.5*nrow(left))
-validation_set <- left[validation_indx,]
+left_k <- data_k[-train_indx_k,]
+validation_indx_k <- sample(seq_len(nrow(left_k)), size = 0.5*nrow(left_k))
+validation_set_k <- left_k[validation_indx_k,]
 
 # 15% for test
-test_set <- left[-validation_indx,]
+test_set_k <- left_k[-validation_indx_k,]
 ```
 
 #4.1 Support Vector Machines (SVM)
 
-SVM has 84.69% of accuracy on the validation set.
+I have built a SVM model with a simple linear kernel, which has 84.69% of accuracy on the validation set.
 
 ```{r}
 library(kernlab)
 
-svm <- ksvm(as.matrix(training_set[, 1:17]),as.factor(training_set[, 18]),
+svm <- ksvm(as.matrix(training_set_k[, 1:17]),as.factor(training_set_k[, 18]),
             type = "C-svc", # Use C-classification method
-            kernel = "vanilladot", # Use simple linear kernel
+            kernel = "vanilladot", 
             C = 100,
             scaled = TRUE)
 
 
-validation <- predict(svm, validation_set[, 1:17])
-validation_acc = sum(validation == validation_set[, 18]) / nrow(validation_set)
-validation_acc
+validation <- predict(svm, validation_set_k[, 1:17])
+svm_acc = sum(validation == validation_set_k[, 18]) / nrow(validation_set_k)
+svm_acc
 ```
 
 #4.2 K-nearest Neighbor Model (KNN)
 
-As KNN is not model based and there is no training or validation step, I would like to use all the data in KNN to test its performane. However, the model ran really slow when there were a lot of observations in this case. I was not able to generate the output here due to time constraints, so just attaching the coding here. 
+As KNN is not model based and there is no training or validation step, I would like to use all the data in KNN to test its performane. However, the model ran really slow when there were a lot of observations in this case. I was not able to generate the output here due to time constraints, so the coding was attached here. 
 
 In reality, both the algorithm efficiency and its accuracy matter. 
 
 ```{r}
 library(kknn)
 
-check_accuracy = function(X){
-  predicted <- rep(0, (nrow(data))) # predictions: start with a vector of all zeros
-  for (i in 1:nrow(data)){
+#check_accuracy = function(X){
+  #predicted <- rep(0, (nrow(data_k))) # predictions: start with a vector of all zeros
+  #for (i in 1:nrow(data_k)){
     # remove row i of the data when finding nearest neighbors
-    knn <- kknn(Revenue~., data[-i,], data[i,], k = X, scale = TRUE) 
-    predicted[i] <- as.integer(fitted(knn) + 0.5) # round off to 0 or 1
-  }
-  accuracy = sum(predicted == data[, 18]) / nrow(data)
-  return(accuracy)
-}
+    #knn <- kknn(Revenue~., data_k[-i,], data_k[i,], k = X, scale = TRUE) 
+    #predicted[i] <- as.integer(fitted(knn) + 0.5) 
+  #}
+  #accuracy = sum(predicted == data_k[, 18]) / nrow(data_k)
+  #return(accuracy)
+#}
 
-acc <- rep(0, 30) # set up a vector of 20 zeros to start
-for (X in 1:30){
-  acc[X] = check_accuracy(X) 
-}
-
+#acc <- rep(0, 30) # set up a vector of 20 zeros to start
+#for (X in 1:30){
+  #acc[X] = check_accuracy(X) 
+#}
+#acc
 ```
 
 #4.3 Clustering*
 
 As an unsupervised learning method, clustering is not for classification and we are not able to predict a shopper's purchase intention via clustering. 
 
-Instead, given the data including web browsing metrics, k-means clustering could be used to subset online shoppers into similar groups. If more customer profile data was given, we would be able to find out the common shopping behavior or characteristics of customers in a cluster, which may help promotion decision-making. 
+Instead, given the data including web browsing metrics, k-means clustering could be used to subset online shoppers into similar groups. If more customer profile data was given, we would be able to find out the common shopping behavior or characteristics of customers in a cluster, which may inform sales and marketing decisions. 
 
 ```{r}
 K <- 1:20
 tot_withinss <- numeric()
 
 for (k in K) {
-  km <- kmeans(data, centers = k, nstart = 20)
+  km <- kmeans(data_k, centers = k, nstart = 20)
   tot_w <- km$tot.withinss # generate total within-cluster sum of squares for the elbow plot later
   tot_withinss <- c(tot_withinss, tot_w)
 }
@@ -262,9 +262,9 @@ plot(data.frame(K, tot_withinss), type = "b", pch = 16,
      main = "The Elbow Method Showing the Optimal K")
 ```
 
-According to the prediction accuracy on the validation set and the algorithm efficiency, the logistic regression model with six features stands out (88.43% accuracy on the validation set), in which $ExitRates$, $PageValues$ and $Month$ are significant to the shopping intention. In other words, the percentage that were the last in the session for all pageviews to the page, the average value for a web page that a user visited before completing an e-commerce transaction, and the shopping timing highly correlated with the purchase.
+According to the prediction accuracy on the validation set and the algorithm efficiency, the logistic regression model with six features stands out (88.43% accuracy on the validation set), in which $ExitRates$, $PageValues$ and $Month$ are significant to the shopping intention. In other words, the percentage that were the last in the session for all pageviews to the page, the average value for a web page that a user visited before completing an e-commerce transaction, and the shopping timing highly correlated with the shopping intention.
 
-To answer the second question, we may use the test set to estimate the model's quality: the model has the accuracy of 87.68% for the prediction of an online purchase intention.
+To answer the second question, we may use the test set to estimate the model's general quality: the model has the accuracy of 87.68% for the prediction of an online purchase intention.
 
 ```{r}
 test_probs<- predict(logit2, test_set[, -18], type = "response")
@@ -276,7 +276,7 @@ mean(test_pred == test_set$Revenue)
 
 Finally, regarding a threshold probability to separate between "buy" and "not buy" response, 0.5 as probability was simply used in the above logistic model: if any precition higher than 0.5, the response would be rounded up to one.
 
-In a business context, it would be more complicated. Do we prefer to detect a less strong purchase intention and thus take actions such as emailing offers to motivate customers to buy? Or would we like to better target leads to increased sales due to cost constraints?
+In a business context, it would be more complicated. Do we prefer to detect a less strong purchase intention and thus take actions such as emailing offers to motivate customers to buy? Or would we like to better target leads to sales due to marketing cost constraints?
 
 In the former scenario, a lower threshold probability may be adopted while a higher one would be considered in the latter.
 
