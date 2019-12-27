@@ -2,7 +2,7 @@
 <div align="right"><font color=grey size=2>Image © Techdealdb.com</font></div>
 
 # To Buy or not to Buy
-Analysis of Online Shopping Intention Data
+An Analysis of Online Shopping Intention Data
 
 ## Overview
 
