@@ -8,7 +8,7 @@ Analysis of Online Shopping Intention Data
 
 The purpose of this analysis project is to combine my understanding of online shopping in the retail industry with my knowledge in data analytics, to demonstrate the analytical techniques I have learned from the MicroMasters Program in Analytics offered by Georgia Institute of Technology. 
 
-The Online Shoppers Purchasing Intention Dataset from  <a href="https://archive.ics.uci.edu/ml/datasets/Online+Shoppers+Purchasing+Intention+Dataset#">the UCI Machine Learning Repository</a>, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include logistical regression, support vector machines, k-nearest-neighbour, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
+The Online Shoppers Purchasing Intention Dataset from  <a href="https://archive.ics.uci.edu/ml/datasets/Online+Shoppers+Purchasing+Intention+Dataset#">the UCI Machine Learning Repository</a>, has 12,330 data points and consists of both numerical and categorical attributes. The models I used here include logistic regression, support vector machines, k-nearest-neighbour, which helped to detect online shoppers purchasing patterns and forcast their intention. The outline of the analysis is as follows:
 
 - Conduct exploratory analysis;
 - Develop research questions about the data;
