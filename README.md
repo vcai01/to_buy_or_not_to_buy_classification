@@ -13,7 +13,7 @@ The Online Shoppers Purchasing Intention Dataset from  <a href="https://archive.
 - Conduct exploratory analysis;
 - Develop research questions about the data;
 - Complete data preprocessing for the modeling;
-- Apply learning algorithm to compare various models' performances and answer the questions.
+- Apply learning algorithms to compare various models' performances and answer the questions.
 
 ## Credits and Appreciation
 
